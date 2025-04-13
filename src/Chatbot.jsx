@@ -1,66 +1,87 @@
-import { useState } from "react";
-import { fetchGeminiResponse } from "../api";
+import { useState, useEffect, useRef } from "react";
+import { fetchGeminiResponse } from "./api";
 
 const Chatbot = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);  // Loading state
+  const [isLoading, setIsLoading] = useState(false);
+
+  const topRef = useRef(null);
 
   const handleSend = async () => {
     if (!input.trim()) return;
 
-    // add user message immediately
     setMessages((prev) => [...prev, { text: input, isUser: true }]);
     setInput("");
-    setIsLoading(true);  // Set loading state to true
+    setIsLoading(true);
 
-    // Get AI response
     const response = await fetchGeminiResponse(input);
     setMessages((prev) => [...prev, { text: response, isUser: false }]);
-    setIsLoading(false);  // Set loading state to false
+    setIsLoading(false);
   };
 
+  // Scroll to top of AI message when new message is added
+  useEffect(() => {
+    if (topRef.current) {
+      topRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [messages]);
+
   return (
-    <div className="flex flex-col h-screen p-4 bg-gray-100">
-      <div className="flex-1 overflow-y-auto space-y-4">
-        {messages.map((msg, idx) => (
-          <div key={idx} className={`flex ${msg.isUser ? "justify-end" : "justify-start"}`}>
-            <div
-              className={`p-3 rounded-lg max-w-xs ${
-                msg.isUser ? "bg-blue-500 text-white" : "bg-gray-300"
-              }`}
-            >
-              {msg.text}
-            </div>
-          </div>
-        ))}
-        
-        {/* Show loading indicator while AI is processing */}
+    <div className="flex flex-col h-screen bg-gray-100">
+      {/* Chat messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-28"> {/* add pb-28 to prevent overlap */}
+        {messages.map((msg, idx) => {
+          if (msg.isUser) {
+            return (
+              <div key={idx} className="flex justify-end">
+                <div className="p-3 rounded-lg max-w-xs bg-blue-500 text-white">
+                  {msg.text}
+                </div>
+              </div>
+            );
+          } else {
+            return (
+              <div key={idx} className="flex justify-center">
+                <div className="w-[85%] md:w-[50%] px-2">
+                  <div ref={topRef} className="p-3 rounded-lg whitespace-pre-wrap text-justify">
+                    {msg.text}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+        })}
+
+        {/* Loading indicator */}
         {isLoading && (
-        <div className="flex justify-center mt-2">
+          <div className="flex justify-center mt-2">
             <div className="w-3 h-3 bg-black rounded-full animate-bounce"></div>
-        </div>
+          </div>
         )}
-
       </div>
 
-      <div className="flex items-center space-x-2">
-        <input
-         type="text"
-         value={input}
-         onChange={(e) => setInput(e.target.value)}
-         onKeyDown={(e) => {
-           if (e.key === "Enter") {
-             handleSend();
-           }
-         }}
-         className="flex-1 p-2 border rounded"
-         placeholder="Ask me anything!"
-        />
-        <button onClick={handleSend} className="p-2 bg-red-500 text-white rounded hover:bg-green-500">
-          Send
-        </button>
-      </div>
+      {/* Sticky Input */}
+      <div className="fixed bottom-6 left-0 right-0 bg-gray-100 px-4">
+  <div className="flex justify-center items-center space-x-2 w-full">
+    <input
+      type="text"
+      value={input}
+      onChange={(e) => setInput(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") handleSend();
+      }}
+      className="w-[70%] md:w-[50%] p-3 border rounded"
+      placeholder="Ask me anything!"
+    />
+    <button
+      onClick={handleSend}
+      className="p-3 bg-red-500 text-white rounded hover:bg-green-500"
+    >
+      Send
+    </button>
+  </div>
+</div>
     </div>
   );
 };
